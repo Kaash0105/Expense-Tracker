@@ -99,7 +99,7 @@ if page == "Dashboard & Analytics":
 
 # Page 2: Add Expense
 elif page == "Add Expense":
-    st.title("➕ Add Expense Details")
+    st.title("➕ Expense Details")
 
     with st.form("add_expense_form", clear_on_submit=True):
         account = st.selectbox("Select Bank Account Profile", ["Account 1", "Account 2", "Account 3"])
