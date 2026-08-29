@@ -26,11 +26,11 @@ if page == "Dashboard & Analytics":
     # Initial Profile Balance Setup
     with st.expander("⚙️ Account Profiles & Initial Balances", expanded=False):
         c1, c2, c3 = st.columns(3)
-        init_acc1 = c1.number_input("Account 1 Initial Amount ($)", min_value=0.0, value=st.session_state.acc1_balance,
+        init_acc1 = c1.number_input("Account 1 Initial Amount (RM)", min_value=0.0, value=st.session_state.acc1_balance,
                                     step=50.0)
-        init_acc2 = c2.number_input("Account 2 Initial Amount ($)", min_value=0.0, value=st.session_state.acc2_balance,
+        init_acc2 = c2.number_input("Account 2 Initial Amount (RM)", min_value=0.0, value=st.session_state.acc2_balance,
                                     step=50.0)
-        init_acc3 = c3.number_input("Account 3 Initial Amount ($)", min_value=0.0, value=st.session_state.acc3_balance,
+        init_acc3 = c3.number_input("Account 3 Initial Amount (RM)", min_value=0.0, value=st.session_state.acc3_balance,
                                     step=50.0)
 
         if st.button("Update Balances"):
@@ -41,29 +41,29 @@ if page == "Dashboard & Analytics":
 
     # Real-Time Balance Metrics across 3 accounts
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Account 1 Balance", f"${st.session_state.acc1_balance:,.2f}")
-    col2.metric("Account 2 Balance", f"${st.session_state.acc2_balance:,.2f}")
-    col3.metric("Account 3 Balance", f"${st.session_state.acc3_balance:,.2f}")
+    col1.metric("Account 1 Balance", f"RM{st.session_state.acc1_balance:,.2f}")
+    col2.metric("Account 2 Balance", f"RM{st.session_state.acc2_balance:,.2f}")
+    col3.metric("Account 3 Balance", f"RM{st.session_state.acc3_balance:,.2f}")
 
     total_funds = st.session_state.acc1_balance + st.session_state.acc2_balance + st.session_state.acc3_balance
-    col4.metric("Total Liquid Funds", f"${total_funds:,.2f}")
+    col4.metric("Total Liquid Funds", f"RM{total_funds:,.2f}")
 
     st.divider()
 
     df = pd.DataFrame(st.session_state.transactions)
     if not df.empty:
         st.subheader("Category Breakdown (%)")
-        spending_by_cat = df.groupby("Category")["Amount ($)"].sum().reset_index()
+        spending_by_cat = df.groupby("Category")["Amount (RM)"].sum().reset_index()
 
         # Doughnut Chart Visualization
         fig = px.pie(
             spending_by_cat,
-            values="Amount ($)",
+            values="Amount (RM)",
             names="Category",
             hole=0.4,
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: $%{value:,.2f} (%{percent})")
+        fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: RM%{value:,.2f} (%{percent})")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No expense data recorded yet. Use the 'Add Expense' page to log spending.")
@@ -78,7 +78,7 @@ elif page == "Add Expense":
             "Spending Category",
             ["Food & Dining", "Housing & Bills", "Entertainment", "Shopping", "Transportation", "Healthcare", "Other"]
         )
-        amount = st.number_input("Expense Amount ($)", min_value=0.01, step=1.0)
+        amount = st.number_input("Expense Amount (RM)", min_value=0.01, step=1.0)
         note = st.text_input("Description / Note")
         submit = st.form_submit_button("Record Spending")
 
@@ -92,7 +92,7 @@ elif page == "Add Expense":
                 current_bal = st.session_state.acc3_balance
 
             if amount > current_bal:
-                st.error(f"Insufficient funds in {account}! Available balance: ${current_bal:,.2f}")
+                st.error(f"Insufficient funds in {account}! Available balance: RM{current_bal:,.2f}")
             else:
                 # Deduct from target account
                 if account == "Account 1":
@@ -107,10 +107,10 @@ elif page == "Add Expense":
                     "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "Account": account,
                     "Category": category,
-                    "Amount ($)": amount,
+                    "Amount (RM)": amount,
                     "Description": note
                 })
-                st.success(f"Deducted ${amount:,.2f} from {account}!")
+                st.success(f"Deducted RM{amount:,.2f} from {account}!")
 
     st.divider()
     st.subheader("Recent Spendings")
