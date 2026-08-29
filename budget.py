@@ -2,18 +2,49 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+import json
+import os
 
-st.set_page_config(page_title="Expense Tracker", layout="wide")
+# File name for local persistent storage
+DATA_FILE = "data.json"
 
-# Initialize Session State Variables (3 Accounts)
-if "acc1_balance" not in st.session_state:
-    st.session_state.acc1_balance = 1000.00
-if "acc2_balance" not in st.session_state:
-    st.session_state.acc2_balance = 1000.00
-if "acc3_balance" not in st.session_state:
-    st.session_state.acc3_balance = 1000.00
-if "transactions" not in st.session_state:
-    st.session_state.transactions = []
+# Helper function: Load data from JSON file
+def load_data():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    # Default values if file doesn't exist yet
+    return {
+        "acc1_balance": 1000.00,
+        "acc2_balance": 1000.00,
+        "acc3_balance": 1000.00,
+        "transactions": []
+    }
+
+# Helper function: Save current state to JSON file
+def save_data():
+    data = {
+        "acc1_balance": st.session_state.acc1_balance,
+        "acc2_balance": st.session_state.acc2_balance,
+        "acc3_balance": st.session_state.acc3_balance,
+        "transactions": st.session_state.transactions
+    }
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+st.set_page_config(page_title="Multi-Page Expense Tracker", layout="wide")
+
+# Initialize Session State Variables from persistent storage on first load
+if "data_loaded" not in st.session_state:
+    persistent_data = load_data()
+    st.session_state.acc1_balance = persistent_data["acc1_balance"]
+    st.session_state.acc2_balance = persistent_data["acc2_balance"]
+    st.session_state.acc3_balance = persistent_data["acc3_balance"]
+    st.session_state.transactions = persistent_data["transactions"]
+    st.session_state.data_loaded = True
 
 # Sidebar Navigation
 st.sidebar.title("📌 Navigation")
@@ -21,49 +52,47 @@ page = st.sidebar.radio("Go to", ["Dashboard & Analytics", "Add Expense", "Expor
 
 # Page 1: Dashboard & Analytics
 if page == "Dashboard & Analytics":
-    st.title("📊 Expense Tracker")
-
+    st.title("📊 Financial Dashboard")
+    
     # Initial Profile Balance Setup
     with st.expander("⚙️ Account Profiles & Initial Balances", expanded=False):
         c1, c2, c3 = st.columns(3)
-        init_acc1 = c1.number_input("Account 1 Initial Amount (RM)", min_value=0.0, value=st.session_state.acc1_balance,
-                                    step=50.0)
-        init_acc2 = c2.number_input("Account 2 Initial Amount (RM)", min_value=0.0, value=st.session_state.acc2_balance,
-                                    step=50.0)
-        init_acc3 = c3.number_input("Account 3 Initial Amount (RM)", min_value=0.0, value=st.session_state.acc3_balance,
-                                    step=50.0)
-
+        init_acc1 = c1.number_input("Account 1 Initial Amount ($)", min_value=0.0, value=st.session_state.acc1_balance, step=50.0)
+        init_acc2 = c2.number_input("Account 2 Initial Amount ($)", min_value=0.0, value=st.session_state.acc2_balance, step=50.0)
+        init_acc3 = c3.number_input("Account 3 Initial Amount ($)", min_value=0.0, value=st.session_state.acc3_balance, step=50.0)
+        
         if st.button("Update Balances"):
             st.session_state.acc1_balance = init_acc1
             st.session_state.acc2_balance = init_acc2
             st.session_state.acc3_balance = init_acc3
-            st.success("Account balances updated!")
+            save_data()  # Save changes permanently
+            st.success("Account balances updated and saved!")
 
     # Real-Time Balance Metrics across 3 accounts
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Account 1 Balance", f"RM{st.session_state.acc1_balance:,.2f}")
-    col2.metric("Account 2 Balance", f"RM{st.session_state.acc2_balance:,.2f}")
-    col3.metric("Account 3 Balance", f"RM{st.session_state.acc3_balance:,.2f}")
-
+    col1.metric("Account 1 Balance", f"${st.session_state.acc1_balance:,.2f}")
+    col2.metric("Account 2 Balance", f"${st.session_state.acc2_balance:,.2f}")
+    col3.metric("Account 3 Balance", f"${st.session_state.acc3_balance:,.2f}")
+    
     total_funds = st.session_state.acc1_balance + st.session_state.acc2_balance + st.session_state.acc3_balance
-    col4.metric("Total Liquid Funds", f"RM{total_funds:,.2f}")
+    col4.metric("Total Liquid Funds", f"${total_funds:,.2f}")
 
     st.divider()
 
     df = pd.DataFrame(st.session_state.transactions)
     if not df.empty:
         st.subheader("Category Breakdown (%)")
-        spending_by_cat = df.groupby("Category")["Amount (RM)"].sum().reset_index()
-
+        spending_by_cat = df.groupby("Category")["Amount ($)"].sum().reset_index()
+        
         # Doughnut Chart Visualization
         fig = px.pie(
             spending_by_cat,
-            values="Amount (RM)",
+            values="Amount ($)",
             names="Category",
             hole=0.4,
             color_discrete_sequence=px.colors.qualitative.Pastel
         )
-        fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: RM%{value:,.2f} (%{percent})")
+        fig.update_traces(textinfo="percent+label", hovertemplate="%{label}: $%{value:,.2f} (%{percent})")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("No expense data recorded yet. Use the 'Add Expense' page to log spending.")
@@ -78,7 +107,7 @@ elif page == "Add Expense":
             "Spending Category",
             ["Food & Dining", "Housing & Bills", "Entertainment", "Shopping", "Transportation", "Healthcare", "Other"]
         )
-        amount = st.number_input("Expense Amount (RM)", min_value=0.01, step=1.0)
+        amount = st.number_input("Expense Amount ($)", min_value=0.01, step=1.0)
         note = st.text_input("Description / Note")
         submit = st.form_submit_button("Record Spending")
 
@@ -92,7 +121,7 @@ elif page == "Add Expense":
                 current_bal = st.session_state.acc3_balance
 
             if amount > current_bal:
-                st.error(f"Insufficient funds in {account}! Available balance: RM{current_bal:,.2f}")
+                st.error(f"Insufficient funds in {account}! Available balance: ${current_bal:,.2f}")
             else:
                 # Deduct from target account
                 if account == "Account 1":
@@ -107,10 +136,12 @@ elif page == "Add Expense":
                     "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "Account": account,
                     "Category": category,
-                    "Amount (RM)": amount,
+                    "Amount ($)": amount,
                     "Description": note
                 })
-                st.success(f"Deducted RM{amount:,.2f} from {account}!")
+                
+                save_data()  # Save updated balance and transactions permanently
+                st.success(f"Deducted ${amount:,.2f} from {account} and saved to database!")
 
     st.divider()
     st.subheader("Recent Spendings")
@@ -128,7 +159,7 @@ elif page == "Export Data":
     if not df.empty:
         st.write("Review logged transactions before downloading:")
         st.dataframe(df, use_container_width=True, hide_index=True)
-
+        
         csv_data = df.to_csv(index=False).encode("utf-8")
         st.download_button(
             label="Download Transactions as CSV",
